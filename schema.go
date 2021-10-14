@@ -402,6 +402,20 @@ func (r *schema) SetSchemaDefinition(sd *parquetschema.SchemaDefinition) error {
 	return nil
 }
 
+func (r *schema) ConfigureDataStores(maxRowsPerPage *int64) {
+	recursiveConfigureDataStores(r.root, maxRowsPerPage)
+}
+
+func recursiveConfigureDataStores(col *Column, maxRowsPerPage *int64) {
+	if col.data != nil {
+		col.data.maxRowsPerPage = maxRowsPerPage
+	} else {
+		for _, child := range col.children {
+			recursiveConfigureDataStores(child, maxRowsPerPage)
+		}
+	}
+}
+
 func createColumnFromColumnDefinition(root *parquetschema.ColumnDefinition) (*Column, error) {
 	params := &ColumnParameters{
 		LogicalType:   root.SchemaElement.LogicalType,
@@ -991,6 +1005,7 @@ type SchemaWriter interface {
 	AddGroup(path string, rep parquet.FieldRepetitionType) error
 	AddColumn(path string, col *Column) error
 	DataSize() int64
+	ConfigureDataStores(*int64)
 }
 
 func makeSchema(meta *parquet.FileMetaData) (SchemaReader, error) {

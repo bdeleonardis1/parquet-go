@@ -41,6 +41,8 @@ type ColumnStore struct {
 	allowDict bool
 
 	skipped bool
+
+	maxRowsPerPage *int64
 }
 
 // useDictionary returns true if a dictionary page should be used to represent this
@@ -162,7 +164,7 @@ func (cs *ColumnStore) add(v interface{}, dL uint16, maxRL, rL uint16) error {
 	}
 
 	dictLen, noDictLen := cs.currValues.sizes()
-	if dictLen > maxValueSizePerPage && noDictLen > maxValueSizePerPage {
+	if dictLen > maxValueSizePerPage && noDictLen > maxValueSizePerPage || cs.maxRowsPerPage != nil && int64(cs.currRowCount) >= *cs.maxRowsPerPage {
 		cs.completeLastPage()
 	}
 

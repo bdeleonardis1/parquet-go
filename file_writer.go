@@ -28,6 +28,8 @@ type FileWriter struct {
 	codec parquet.CompressionCodec
 
 	newPage newDataPageFunc
+
+	maxRowsPerPage *int64
 }
 
 // FileWriterOption describes an option function that is applied to a FileWriter when it is created.
@@ -51,6 +53,10 @@ func NewFileWriter(w io.Writer, options ...FileWriterOption) *FileWriter {
 
 	for _, opt := range options {
 		opt(fw)
+	}
+
+	if fw.maxRowsPerPage != nil {
+		fw.SchemaWriter.ConfigureDataStores(fw.maxRowsPerPage)
 	}
 
 	return fw
@@ -113,6 +119,12 @@ func WithSchemaDefinition(sd *parquetschema.SchemaDefinition) FileWriterOption {
 func WithDataPageV2() FileWriterOption {
 	return func(fw *FileWriter) {
 		fw.newPage = newDataPageV2Writer
+	}
+}
+
+func WithMaxRowCountPerPage(maxRows *int64) FileWriterOption {
+	return func(fw *FileWriter) {
+		fw.maxRowsPerPage = maxRows
 	}
 }
 
