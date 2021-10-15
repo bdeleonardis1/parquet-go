@@ -163,9 +163,9 @@ func (c *Column) buildElement() *parquet.SchemaElement {
 func (c *Column) getDataSize() int64 {
 	if _, ok := c.data.typedColumnStore.(*booleanStore); ok {
 		// Booleans are stored in one bit, so the result is the number of items / 8
-		return int64(c.data.values.numValues())/8 + 1
+		return int64(c.data.getTotalSize())/8 + 1
 	}
-	return c.data.values.size
+	return c.data.getTotalSize()
 }
 
 func (c *Column) getNextData() (map[string]interface{}, int32, error) {
@@ -400,6 +400,20 @@ func (r *schema) SetSchemaDefinition(sd *parquetschema.SchemaDefinition) error {
 	}
 
 	return nil
+}
+
+func (r *schema) ConfigureDataStores(maxRowsPerPage *int64) {
+	recursiveConfigureDataStores(r.root, maxRowsPerPage)
+}
+
+func recursiveConfigureDataStores(col *Column, maxRowsPerPage *int64) {
+	if col.data != nil {
+		col.data.maxRowsPerPage = maxRowsPerPage
+	} else {
+		for _, child := range col.children {
+			recursiveConfigureDataStores(child, maxRowsPerPage)
+		}
+	}
 }
 
 func createColumnFromColumnDefinition(root *parquetschema.ColumnDefinition) (*Column, error) {
@@ -991,6 +1005,7 @@ type SchemaWriter interface {
 	AddGroup(path string, rep parquet.FieldRepetitionType) error
 	AddColumn(path string, col *Column) error
 	DataSize() int64
+	ConfigureDataStores(*int64)
 }
 
 func makeSchema(meta *parquet.FileMetaData) (SchemaReader, error) {
